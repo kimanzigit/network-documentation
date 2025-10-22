@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Drawing Board</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
+    #shapes-list div {
+      border: 1px solid #ddd;
+      padding: 8px;
+      margin-bottom: 6px;
+    }
+    button {
+      padding: 10px;
+      margin-top: 10px;
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Drawing Board</h2>
+  <p id="ticket-name"></p>
+
+  <div id="shapes-list">Loading shapes...</div>
+
+  <h3>Add Shape</h3>
+  <form id="add-shape-form">
+    <input type="text" id="shape-name" placeholder="Shape Name" required />
+    <select id="shape-type" required>
+      <option value="">Select type</option>
+      <option value="circle">Circle</option>
+      <option value="square">Square</option>
+      <option value="triangle">Triangle</option>
+    </select>
+    <button type="submit">Add Shape</button>
+  </form>
+
+  <button id="back-btn">Back to Tickets</button>
+
+  <script>
+    const API = 'http://localhost:3000'; // Update if deployed
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const ticketId = localStorage.getItem('selectedTicketId');
+
+    if (!token || !ticketId) {
+      window.location.href = 'login.html';
+    }
+
+    const shapesList = document.getElementById('shapes-list');
+    const ticketNameEl = document.getElementById('ticket-name');
+    const addShapeForm = document.getElementById('add-shape-form');
+
+    async function loadTicket() {
+      try {
+        const res = await fetch(`${API}/tickets/${ticketId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error('Failed to load ticket');
+        const ticket = await res.json();
+        ticketNameEl.textContent = `Ticket: ${ticket.name}`;
+        renderShapes(ticket.shapes);
+      } catch (err) {
+        shapesList.innerHTML = `<p>Error: ${err.message}</p>`;
+      }
+    }
+
+    function renderShapes(shapes) {
+      if (!shapes.length) {
+        shapesList.innerHTML = '<p>No shapes added yet.</p>';
+        return;
+      }
+      shapesList.innerHTML = '';
+      shapes.forEach(shape => {
+        const div = document.createElement('div');
+        div.textContent = `${shape.type.toUpperCase()}: ${shape.name}`;
+        shapesList.appendChild(div);
+      });
+    }
+
+    addShapeForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('shape-name').value.trim();
+      const type = document.getElementById('shape-type').value;
+      if (!name || !type) return alert('Please provide shape name and type');
+
+      try {
+        const res = await fetch(`${API}/tickets/${ticketId}/shapes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ name, type }),
+        });
+        if (!res.ok) throw new Error('Failed to add shape');
+        document.getElementById('shape-name').value = '';
+        document.getElementById('shape-type').value = '';
+        await loadTicket();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    document.getElementById('back-btn').addEventListener('click', () => {
+      window.location.href = 'tickets.html';
+    });
+
+    loadTicket();
+  </script>
+</body>
+</html>
